@@ -1,0 +1,2191 @@
+// init() is called as soon as the page loads
+//var estacoesPO2020 = getAPIData('js/json/PGRH3_PRESSOES_CARGAS_PONTUAL_29Mar2021.json?dev= + Math.floor(Math.random() * 100');
+
+
+
+
+var MA500k;
+var MA500klayer;
+var x = 0;
+var rMax = 0;
+var document;
+var autocontrolo;
+var value;
+var codigoID;
+
+var rh = getAPIData('js/json/RH.json');
+
+  const sheetId = '';
+  const base = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?`;
+  const sheetName = 'Informação';
+  const query = encodeURIComponent('Select *')
+  const url = `${base}&sheet=${sheetName}&tq=${query}`
+  const data = []
+  document.addEventListener('DOMContentLoaded', init)
+  const output = document.querySelector('.output')
+
+var aquav1;
+var coordinates;
+
+  function init() {
+    var CordinatesX=[]
+    var CordinatesY=[]
+    var dbSheetsArray=[];
+    var dbSheets = new Object();
+      fetch(url)
+          .then(res => res.text())
+          .then(rep => {
+              //Remove additional text and extract only JSON:
+             const jsonData = JSON.parse(rep.substring(47).slice(0, -2));
+              console.log(jsonData.table.cols)
+              console.log(jsonData.table.rows)
+              columns=jsonData.table.cols
+              rows1=jsonData.table.rows
+               // alert(columns.length)            
+            for (var cols = 0; cols < columns.length; cols++) {
+                    console.log(columns[cols].label)
+            }
+            for (var lns = 0; lns < rows1.length; lns++) {
+                //console.log(rows1[lns].c[4].v)
+
+                x=rows1[lns].c[4].v
+                y=rows1[lns].c[5].v
+                ID=rows1[lns].c[1].v
+                tipologia=rows1[lns].c[2].v
+                nome=rows1[lns].c[0].v
+
+                //CordinatesX.append(x);
+                //CordinatesY.append(y)
+                console.log(x)
+                console.log(y)
+                dbSheets.x = x;
+                dbSheets.y  = y;
+                dbSheets.ID  = ID;
+                dbSheets.tipologia  = tipologia;
+                dbSheets.nome  = nome;
+              // dbSheetsArray.push((JSON.stringify(dbSheets)))
+               dbSheetsArray.push({
+                x: x,
+                y: y, 
+                ID: ID,
+                Tipologia: tipologia,
+                nome: nome
+            });
+               //console.log(dbSheetsArray);
+
+
+
+
+               loadMarkers(dbSheetsArray)   
+        }     
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  }
+   
+
+  //var rh = getAPIData('js/json/RH.json');
+
+  const sheetIdTemperature = '1f-vRO9v_uqeXU6E8mEEzcjFLzjkZ2SriRho0smFbZXc';
+  const baseTemperature = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?`;
+  const sheetNameTemperature = 'Temperatura';
+  const queryTemperature = encodeURIComponent('Select *')
+  const urlTemperature = `${base}&sheet=${sheetNameTemperature}&tq=${query}`
+  const dataTemperature = []
+  document.addEventListener('DOMContentLoaded', init2)
+  const outputTemperature = document.querySelector('.output')
+
+var jsonDataTemperature;
+  function init2() {
+    var CordinatesX=[]
+    var CordinatesY=[]
+    var dbSheetsArrayTemperature=[];
+    var dbSheetsTemperature = new Object();
+      fetch(urlTemperature)
+          .then(res => res.text())
+          .then(rep => {
+              //Remove additional text and extract only JSON:
+              jsonDataTemperature = JSON.parse(rep.substring(47).slice(0, -2));
+             // console.log(jsonDataTemperature.table.cols)
+             // console.log(jsonDataTemperature.table.rows)
+              //columns=jsonDataTemperature.table.cols
+         
+               // alert(columns.length)            
+
+
+    })
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var loadPolygons = false;
+var arhSelect = 'Todas';
+
+apiKey = "";
+var streetsArcGis = L.esri.Vector.vectorBasemapLayer('ArcGIS:Streets', {
+    apikey: apiKey // replace with your api key - https://developers.arcgis.com
+});
+
+//var streetsArcGis =  L.esri.basemapLayer('Streets');
+
+var imageryArcGis = L.esri.basemapLayer('Imagery');
+
+
+var map = L.map('map', {
+    center: [39.6, -8],
+    zoom: 7,
+    zoomControl: false,
+    // scrollWheelZoom: false, // disable original zoom function
+    //smoothWheelZoom: true,  // enable smooth zoom
+    //smoothSensitivity: 1,   // zoom speed. default is 1
+    //  zoomSnap: 0.5,
+    layers: [streetsArcGis],
+    contextmenu: true,
+    contextmenuWidth: 200,
+    contextmenuItems: [
+        {
+            text: 'Nome MA Subt',
+            callback: filterMA500kMenu,
+        },
+
+        {
+            text: 'Filtrar Captações por MA Subt',
+            callback: filterMA500kMenuPoints
+
+        }, {
+            text: 'Número Captações por MA Subt',
+            callback: filterMA500kMenuPointsNumeroEstacoes
+
+        },
+
+        {
+            text: 'Ver todas',
+            callback: verTodas
+
+        },
+
+        '-', {
+            text: 'Mostrar Coordenadas',
+            callback: showCoordinates
+
+        }
+    ]
+
+});
+
+
+
+var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+if (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i) || userAgent.match(/Android/i)) {
+    var title = L.control();
+    title.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'titleMobile'); // create a div with a class "title"
+        this.update();
+        return this._div;
+    };
+    title.update = function (props) {
+        this._div.innerHTML = '<h4>AQUADAPT Quality/Quantity</h4>'
+    };
+    title.addTo(map);
+} else {
+
+    var title = L.control({ position: 'topright' });
+    title.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'title'); // create a div with a class "title"
+        this.update();
+        return this._div;
+    };
+    title.update = function (props) {
+        this._div.innerHTML = '<h4>AQUADAPT Quality/Quantity</h4>'
+    };
+    title.addTo(map);
+
+    var title = L.control({ position: 'topright' });
+    title.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'title'); // create a div with a class "title"
+        this.update();
+        return this._div;
+    };
+    title.update = function (props) {
+        this._div.innerHTML = '<h4>' + tituloCampanha + '</h4>'
+    };
+    //   title.addTo(map);
+}
+
+
+function planeada(data) {
+    searchControl = false;
+    MA500kFilter = 1
+    insertedFilter = 1;
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+
+function all(data) {
+    searchControl = false;
+    MA500kFilter = 1
+    insertedFilter = 2;
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+function efetuada(data) {
+    searchControl = false;
+    MA500kFilter = 1
+    insertedFilter = 0;
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+function emExecucao(data) {
+    var actualDate = new Date().toISOString().slice(0, 10);
+    MA500kFilter = 1
+    dateSelected = actualDate;
+    estadoInicial = 0;
+    primeiroDia = 0
+    dateSelectedFinal = actualDate;
+
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+function executarAmanha(data) {
+    var actualDate = new Date();
+    MA500kFilter = 1
+    actualDate.setDate(actualDate.getDate() + 1)
+    var tomorrowDate = actualDate.toISOString().slice(0, 10);
+    dateSelected = tomorrowDate;
+    estadoInicial = 0;
+    primeiroDia = 0
+    dateSelectedFinal = tomorrowDate;
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+function naoefetuada(data) {
+    pointGroupLayer.clearLayers();
+    MA500kFilter = 1
+    estadoInicial = "A"
+    primeiroDia = 0
+    dateSelected = 0
+    dateSelectedFinal = 0;
+    addPoints()
+}
+
+function desconhecido(data) {
+    estadoInicial = undefined
+    pointGroupLayer.clearLayers();
+    MA500kFilter = 1
+    addPoints()
+}
+
+function inicial(data) {
+    pointGroupLayer.clearLayers();
+    MA500kFilter = 1
+    primeiroDia = 0
+    estadoInicial = 0;
+    dateSelected = 0;
+    dateSelectedFinal = 0;
+    mapClearFilterColor(MA500kPolygon)
+    addPoints()
+    //addPoints(data)
+}
+
+
+var baseLayers = {
+    "Streets": streetsArcGis,
+    "Imagery": imageryArcGis
+};
+
+var loading = L.control.loader().addTo(map);
+
+var loadingPercentage = document.getElementById("loadingFront");
+
+
+
+async function loaderPercentage(percentage) {
+
+    loadingPercentage.textContent = percentage;
+
+}
+
+
+/*
+loader()
+
+function loader(_success) {
+   // alert('oi')
+    //var obj = document.getElementById('loading');
+    inner =  loadingPercentage
+    //page = document.querySelector('.page');
+//    inner.classList.add('show');
+    //page.classList.remove('show');
+
+
+    var w = 0,
+        t = setInterval(function() {
+            w = w + 1;
+            inner.textContent = w+'%';
+            if (w === 100){
+                //obj.classList.add('show');
+                //page.classList.add('show');
+                clearInterval(t);
+                w = 0;
+                if (_success){
+                    return _success();
+                }
+            }
+        }, 20);
+}
+*/
+
+var layerControl = L.control.layers(baseLayers).addTo(map);
+
+L.control.scale().addTo(map);
+
+L.Control.geocoder({ position: 'topright' }).addTo(map);
+L.control.locate({ position: 'topright' }).addTo(map);
+
+var selectView = L.control({ position: 'topright' });
+var campaign;
+
+selectView.onAdd = function (map) {
+    campaign = "<div id='campaign'><a href=\"javascript:pmCampanha2020('Plano de Monitorização 20/21')\" style=\"font-size:12px\"> <b>Plano Monit. 20/21 </b></a><br>\n" +
+        // '<div class="centered" ><a edit_id="name_".trim($name)."" href="#myModal"  data-toggle="modal" >Plano de Monitorização de Recursos Hidricos</a></div> <br><br>'+
+        "<a href=\"javascript:primeiraCampanha2020('1ª Campanha 2020')\" style=\"font-size:12px\"> <b>1ª Campanha 20/21 </b></a><br>\n" +
+        "<a href=\"javascript:segundaCampanha2020('2ª Campanha 2020')\" style=\"font-size:12px\"> <b>2ª Campanha 20/21</b> </a><br>\n" +
+        "<a href=\"javascript:terceiraCampanha2020('3ª Campanha 2020')\" style=\"font-size:12px\"> <b>3ª Campanha 20/21 </b></a><br>\n" +
+        "<a href=\"javascript:quartaCampanha2020('4ª Campanha 2020')\" style=\"font-size:12px\"> <b>4ª Campanha 20/21 </b></a><br>" +
+        "<a href=\"javascript:quintaCampanha2020('5ª Campanha 2020')\" style=\"font-size:12px\"> <b>5ª Campanha 20/21 </b></a><br>" +
+        "<br>\n</div>";
+    var div1 = L.DomUtil.create('div', 'grow')
+    div1.innerHTML = ("<div id=\"gr\">\n" +
+        " <span id=\"gr1\" style=\"font-size:18px\" class=\"iconify\" data-icon=\"clarity:calendar-solid\" data-inline=\"false\"></span>\n" +
+        '<div class="dropdown">' +
+        '<button class="btn btn-primary btn-sm" type="button" data-toggle="dropdown">Campanha' +
+        '<span class="caret"></span></button>' +
+        '<ul class="dropdown-menu">' +
+        '<li><a href=\"javascript:selectCampanha2020(\'2020\')\">2020</a></li>' +
+        '<li><a href=\"javascript:selectCampanha2021(\'2021\')\">2021</a></li>' +
+        '<li><a href=\"javascript:selectCampanha2022(\'2022\')\">2022</a></li>' +
+        '</ul>' +
+        '</div> <br>' +
+        campaign +
+        "<a> <button onclick=\"firstDay()\"><span id=\"gr1\" style=\"font-size:12px\" class=\"iconify\" data-icon=\"bx:bxs-flag-checkered\" data-inline=\"false\"></span></button> </a>" +
+        "<a> <button onclick=\"initial()\">Ver Tudo</button> </a>" +
+        "<a> <button onclick=\"calendarPanel()\">l</button> </a>" +
+        //"<br><br><a> <button onclick=\"exportar()\">Exportar Campanha</button> </a>" +
+        "<br><br><button type=\"button\" data-toggle=\"modal\" data-target=\"#myModal\">Exportar Campanha</button>" +
+        "<br><br><button type=\"button\" data-toggle=\"modal\" data-target=\"#myModal\">Adicionar</button>" +
+        "<br><br> <p>Data Inicial: <input id=\"datePicker\" type=\"date\"></p>" +
+        "<p>Data Final: <input id=\"datePickerFinal\" type=\"date\"></p>  <p><button onclick=\"dateSelect()\">Ver estações</button></p>" +
+        "</div>"
+
+    )
+    return div1;
+}
+//selectView.addTo(map);
+
+
+//loadingPercentage.textContent = 2+'%';
+
+var selectView = L.control({ position: 'topright' });
+var campaign;
+selectView.onAdd = function (map) {
+
+    var div1 = L.DomUtil.create('div')
+    div1.innerHTML = ("<div id=\"gr\">\n" +
+
+
+        //'<button type="button" data-toggle="modal" data-target="#myModal" ><i class="fas fa-save"></i></button>'+
+        '<button type="button" onclick=\"exportarPOAlentejo2020() " ><i class="fas fa-save"></i></button>' +
+
+        "</div>"
+
+    )
+    return div1;
+}
+//selectView.addTo(map);
+
+var selectView = L.control({ position: 'topright' });
+
+
+var selectView = L.control({ position: 'topright' });
+var campaign;
+selectView.onAdd = function (map) {
+
+    var div1 = L.DomUtil.create('div')
+    div1.innerHTML = ("<div id=\"gr\">\n" +
+
+
+        //'<button type="button" data-toggle="modal" data-target="#myModal" ><i class="fas fa-save"></i></button>'+
+        '<button type="button" onclick=\"exportarManual()  " ><i class="fa fa-book"></i></button>' +
+
+        "</div>"
+
+    )
+    return div1;
+}
+//selectView.addTo(map);
+
+var selectView = L.control({ position: 'topright' });
+
+
+var legend1 = '<a href="javascript:filtroLegenda(\''
+var legend2 = '\')" style=\\"font-size:10px\\">'
+var legend3 = '</a>'
+
+
+var legendaCategorias = ['Estação']
+
+
+
+
+//alert(legendaCategorias.length)
+var tempLegend = []
+
+function legendCat() {
+    for (l = 0; l < legendaCategorias.length; l++) {
+
+        tempLegend.push(legend1 + legendaCategorias[l] + legend2 + legendaCategorias[l] + legend3)
+
+        // console.log( tempLegend)
+    }
+
+    //console.log(tempLegend)
+    return tempLegend
+
+}
+
+
+var saveSelectViewA = L.control({position: 'topright'});
+var campaign;
+saveSelectViewA.onAdd = function (map) {
+
+    var div1 = L.DomUtil.create('div')
+    div1.innerHTML = ("<div id=\"gr\">\n" +
+        //'<button type="button" data-toggle="modal" data-target="#myModal" ><i class="fas fa-save"></i></button>'+
+        '<button type="button" onclick=\"exportarDadosLua() " ><i class="fas fa-file-csv" style=" font-size: 20px"></i></button>'+
+        "</div>"
+    )
+    return div1;
+}
+//saveSelectViewA.addTo(map);
+
+
+var saveSelectViewGeoJson = L.control({position: 'topright'});
+saveSelectViewGeoJson.onAdd = function (map) {
+
+    var div1 = L.DomUtil.create('div')
+    div1.innerHTML = ("<div id=\"grGeoJson\">\n" +
+        //'<button type="button" data-toggle="modal" data-target="#myModal" ><i class="fas fa-save"></i></button>'+
+        '<button type="button" onclick=\"exportarDadosLuaGeoJson() " ><i class="fa fa-save" style=" font-size: 20px"></i></button>'+
+        "</div>"
+    )
+    return div1;
+}
+//saveSelectViewGeoJson.addTo(map);
+
+
+
+var legend = L.control({ position: 'bottomright' });
+legend.onAdd = function (map) {
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = legendCat()/* tempLengend/*[  '<a href="javascript:efetuada(\'Efetuada\')" style=\\"font-size:10px\\"> Carregadas </a>',
+                    '<a href="javascript:planeada(\'Planeada\')" style=\\"font-size:10px\\"> Planeadas</a>',
+                    '<a href="javascript:all(\'all\')" style=\\"font-size:10px\\"> Ver Tudo </a>',
+           ],*/
+
+    labels = ['<a href="javascript:filtroLegenda(\'VerTudo\')" style=\\"font-size:10px\\"> <strong>Legenda</strong> </a>'],
+        //colorsL = [d3.rgb(124, 252, 0), d3.rgb(74, 167, 211), d3.rgb(25, 25, 112), d3.rgb(255, 0, 0), d3.rgb(255, 140, 1), d3.rgb(153, 50, 204), d3.rgb(51, 102, 0), d3.rgb(255, 0, 255), d3.rgb(0, 0, 204), d3.rgb(0, 0, 0), d3.rgb(102, 51, 0), d3.rgb(153, 153, 0), d3.rgb(165, 82, 45), d3.rgb(96, 96, 96), d3.rgb(96, 96, 96), d3.rgb(192, 192, 192)]
+        colorsL = [ d3.rgb(25, 25, 112), d3.rgb(255, 0, 0), d3.rgb(255, 140, 1), d3.rgb(96, 96, 96), d3.rgb(192, 192, 192)]
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML += labels.push(
+            '<i class="circle" style="background:' + colorsL[i] + '"></i> ' + (grades[i] ? grades[i] : '+'))
+    }
+    div.innerHTML = labels.join('<br>');
+    return div;
+};
+legend.addTo(map);
+
+
+
+legend.getContainer().addEventListener('mouseover', function () {
+    mapClick = false
+    propagationLeftMenu = false;
+
+    map.dragging.disable();/*
+    map.originalEvent.preventDefault();
+    map.on('click', doSomething);
+    map.off('click');*/
+
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    if (map.tap) map.tap.disable();
+    document.getElementById('map').style.cursor = 'default';
+    //   map.smoothWheelZoom.disable()
+    // alert('disable')
+    map._handlers.forEach(function (handler) {
+        handler.disable();
+
+    });
+
+    if (this.map && this.map.leafletElement) {
+        let zoomLevel = this.map.leafletElement.getZoom();
+        if (zoomLevel >= 0) {
+            this.setState({ draggable: true, zoom: zoomLevel });
+        } else {
+            this.setState({ draggable: false, zoom: zoomLevel });
+        }
+    }
+
+});
+
+// Re-enable dragging when user's cursor leaves the element
+
+legend.getContainer().addEventListener('mouseout', function () {
+    mapClick = true;
+    propagationLeftMenu = true;
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.doubleClickZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
+    if (map.tap) map.tap.enable();
+    document.getElementById('map').style.cursor = 'grab';
+    map._handlers.forEach(function (handler) {
+        handler.enable();
+
+    });
+    // map.smoothWheelZoom.enable();
+});
+
+
+L.control.zoom({
+    position: 'bottomright'
+}).addTo(map);
+
+
+function dateSelect() {
+    dateSelected = (document.getElementById('datePicker').value)
+    dateSelectedFinal = (document.getElementById('datePickerFinal').value)
+    if (dateSelectedFinal === '') {
+        dateSelectedFinal = dateSelected;
+    }
+    estadoInicial = 0
+    primeiroDia = 0;
+
+    pointGroupLayer.clearLayers();
+    addPoints()
+}
+
+function initial() {
+    pointGroupLayer.clearLayers();
+    estadoInicial = 0
+    dateSelected = 0;
+    dateSelectedFinal = 0;
+    addPoints()
+}
+
+
+var sidebar = L.control
+    .sidebar({
+        container: "sidebar",
+        closeButton: true,
+        position: "left"
+    })
+    .addTo(map);
+
+let panelID = "my-info-panel";
+var panelContent = {
+    id: panelID,
+    tab: "<i class='fa fa-bars active'></i>",
+    pane: "<p id='sidebar-content'></p>",
+    title: "<h2 id='sidebar-title'>Selecionar Ponto</h2>"
+};
+sidebar.addPanel(panelContent);
+
+
+var panelMenu = {
+    id: "info-Menu",
+    tab: "<i class='fa fa-map-signs'></i>",
+    title: "<h2 id='sidebar-title-menu'>Dashboards</h2>",
+    pane: "<p id='sidebar-menu'></p>"
+};
+
+sidebar.addPanel(panelMenu);
+
+
+
+
+sidebar.getContainer().addEventListener('mouseover', function () {
+    mapClick = false
+    propagationLeftMenu = false;
+
+    map.dragging.disable();/*
+    map.originalEvent.preventDefault();
+    map.on('click', doSomething);
+    map.off('click');*/
+
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    if (map.tap) map.tap.disable();
+    document.getElementById('map').style.cursor = 'default';
+    //   map.smoothWheelZoom.disable()
+    // alert('disable')
+    map._handlers.forEach(function (handler) {
+        handler.disable();
+
+    });
+
+    if (this.map && this.map.leafletElement) {
+        let zoomLevel = this.map.leafletElement.getZoom();
+        if (zoomLevel >= 0) {
+            this.setState({ draggable: true, zoom: zoomLevel });
+        } else {
+            this.setState({ draggable: false, zoom: zoomLevel });
+        }
+    }
+
+});
+
+// Re-enable dragging when user's cursor leaves the element
+
+sidebar.getContainer().addEventListener('mouseout', function () {
+    mapClick = true;
+    propagationLeftMenu = true;
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.doubleClickZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
+    if (map.tap) map.tap.enable();
+    document.getElementById('map').style.cursor = 'grab';
+    map._handlers.forEach(function (handler) {
+        handler.enable();
+
+    });
+    // map.smoothWheelZoom.enable();
+});
+
+
+// manual https://amostragem.apambiente.pt/autocontrolo/Manual do Utilizador Dashboard Autocontrolo SILiamb.pptx
+
+var searchBar = L.control({ position: 'topcenter' });
+var barHtml;
+
+searchBar.onAdd = function (map) {
+    barHtml = "  <div>    <div class=\"container\" style=\"padding: 0px 0px;    z-index: 25000000;\">\n" +
+        
+        "        <div class=\"form-group\">\n" +
+        //"       <input style=\"height: 35px; z-index: 250;  width:500px; display: block; margin-left: auto; margin-right: auto \"autocomplete=\"off\" type=\"input\" class=\"form-control input-lg\" id=\"txt-search\" placeholder=\"Pesquisar Rejeição\"/></input>" +
+      //  "       <input style=\"height: 35px; z-index: 250;  width:500px; display: block; margin-left: auto; margin-right: auto \"autocomplete=\"off\" type=\"input\" class=\"form-control input-lg\" id=\"txt-search\" placeholder=\"Pesquisar Rejeição\"/><button class=\"custom-search-botton\"; onclick=searchDB(\"Pesquisa\"); type=\"button\" > Pesquisa </button></input>" +
+      
+      "        <form role=\"form\">\n" +   
+      '<div class=\"input-group custom-search\"> <input type=\"input\" autocomplete=\"off\" class=\"form-control custom-search-input\"  id=\"txt-search\" placeholder=\"Título/Nome Captação/NIF\"> <button class=\"btn btn-primary custom-search-botton\"; onclick=searchDB(\"Pesquisa\"); type=\"button\" id=\"txt-search\"  > Pesquisa </button> </input> </div> '+
+        //'<div class=\"containerSearchRH\"> <input type="checkbox" class="site-nav__item" id="checkARHNorte" name="ARH Norte" value="ARHNorte">   <label for="checkARHNorte"> ARH Norte</label> &nbsp&nbsp' +
+        //'<input type="checkbox" class="site-nav__item" id="checkARHCentro" name="ARH Centro" value="ARHCentro">   <label for="checkARHCentro"> ARH Centro</label>&nbsp&nbsp' +
+        //'<input type="checkbox" class="site-nav__item" id="checkARHTejoeOeste" name="ARH Tejo e Oeste" value="ARHTejoeOeste">   <label for="checkARHTejoeOeste"> ARH Tejo e Oeste</label>&nbsp&nbsp' +
+        //'<input type="checkbox" class="site-nav__item" id="checkARHAlentejo" name="ARH Alentejo" value="ARHAlentejo">   <label for="checkARHAlentejo"> ARH Alentejo</label>&nbsp&nbsp' +
+        //'<input type="checkbox" class="site-nav__item" id="checkARHAlgarve"  name="ARH Algarve"  value="ARHAlgarve">    <label for="checkARHAlgarve"> ARH Algarve</label> &nbsp&nbsp </div>' +
+        "            </div>" +
+        "        </form>" +
+        "        <div id=\"filter-records\"></div>" +
+        "    </div></div> ";
+
+
+    var div2 = L.DomUtil.create()
+    div2.innerHTML = (
+        barHtml
+    )
+    return div2;
+}
+//searchBar.addTo(map);
+
+
+
+/*
+
+var input = document.getElementById("txt-search");
+
+// Execute a function when the user releases a key on the keyboard
+input.addEventListener("keyup", function (event) {
+    searchDB(event)
+});
+
+
+
+
+function searchDB(event) {
+
+
+    if (event.key === 'Enter') {
+         // Cancel the default action, if needed
+        event.preventDefault();
+        searchLoading();
+        searchInside();
+    }
+
+    if ( event==="Pesquisa") {
+        searchLoading();
+        searchInside();
+    }
+        function searchInside(){      
+     
+        var edValue = document.getElementById("txt-search");
+        var s = edValue.value;    
+       // alert(s)       
+        var searchDBLink = 'https://10.241.98.1:3500/searchCaptacoesLUA?searchPhrase=' + s// + '&filterRHNorte=' + document.getElementById('checkARHNorte').checked + '&filterRHCentro=' + document.getElementById('checkARHCentro').checked + '&filterRHTejoeOeste=' + document.getElementById('checkARHTejoeOeste').checked + '&filterRHAlentejo=' + document.getElementById('checkARHAlentejo').checked + '&filterRHAlgarve=' + document.getElementById('checkARHAlgarve').checked                            
+        // alert('searching')
+        var searchRetrieved = $.getJSON(searchDBLink, function () {
+          })
+            //searchAutocontrolo
+            .done(function () {
+               // alert('searching')
+                console.log("success");
+                console.log(searchRetrieved.responseJSON)
+                result= searchRetrieved.responseJSON
+                result = result.reduce((a, b) => a.date > b.date ? a : b);    
+                console.log(searchRetrieved.responseJSON)   
+                showSearchDB(searchRetrieved.responseJSON)
+
+            });
+    }
+}
+
+*/
+var propagationLeftMenu = true;
+// Disable dragging when user's cursor enters the element
+var mapClick = true;
+/*
+searchBar.getContainer().addEventListener('mouseover', function () {    
+    mapClick = false
+    propagationLeftMenu = false;
+    map.dragging.disable();/*
+    map.originalEvent.preventDefault();
+    map.on('click', doSomething);
+    map.off('click');*/
+ /*   map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    if (map.tap) map.tap.disable();
+    document.getElementById('map').style.cursor = 'default';
+    //   map.smoothWheelZoom.disable()
+    // alert('disable')
+    map._handlers.forEach(function (handler) {
+        handler.disable();
+    });
+    if (this.map && this.map.leafletElement) {
+        let zoomLevel = this.map.leafletElement.getZoom();
+        if (zoomLevel >= 0) {
+            this.setState({ draggable: true, zoom: zoomLevel });
+        } else {
+            this.setState({ draggable: false, zoom: zoomLevel });
+        }
+    }
+
+});*/
+
+// Re-enable dragging when user's cursor leaves the element
+/*searchBar.getContainer().addEventListener('mouseout', function () {
+    mapClick = true;
+    propagationLeftMenu = true;
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.doubleClickZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
+    if (map.tap) map.tap.enable();
+    document.getElementById('map').style.cursor = 'grab';
+    map._handlers.forEach(function (handler) {
+        handler.enable();
+    });
+    // map.smoothWheelZoom.enable();
+});*/
+
+map.getContainer().addEventListener("click", function (event) {
+   // console.log(event.target.getAttribute('class'))
+   // console.log(event)
+    if (event.target.getAttribute('class')!=='btn btn-primary custom-search-botton'){
+        $('#filter-records').html('');
+    }
+    //  map.dragging.enable();
+    //map.smoothWheelZoom.enable();
+    if (mapClick == true) {
+        propagationLeftMenu = true;
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.doubleClickZoom.enable();
+        map.scrollWheelZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+        if (map.tap) map.tap.enable();
+        document.getElementById('map').style.cursor = 'grab';
+        map._handlers.forEach(function (handler) {
+            handler.enable();
+        });
+    }
+});
+
+/*
+var panelContentCamera = {
+    id: "cam-box",
+    tab: "<i class='fa fa-camera'></i>",
+    title: "<h2 id='sidebar-title-camera'>Câmara</h2>",
+    pane: "<p id='sidebar-camera'></p>"
+};
+
+sidebar.addPanel(panelContentCamera);
+*/
+
+var panelContentInfo = {
+    id: "info-box",
+    tab: "<i class='fa fa-info-circle'></i>",
+    title: "<h2 id='sidebar-title-Info'>Info</h2>",
+    pane: "<p id='sidebar-Info'></p>"
+};
+
+//sidebar.addPanel(panelContentInfo);
+let logo = L.control({ position: "bottomleft" });
+var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+if (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i) || userAgent.match(/Android/i)) {
+    logo.onAdd = function () {
+        let div = L.DomUtil.create("div", "logoMobile");
+        div.innerHTML =
+            '<a href="https://apambiente.pt/"><img src="Logos/Logo_APA.jpg"  style="width:100px;height:46px;"></img></a>';
+        return div;
+    };
+    //logo.addTo(map);
+} else {
+    logo.onAdd = function () {
+        let div = L.DomUtil.create("div", "logo");
+        div.innerHTML =
+            '<a href="https://apambiente.pt/"><img src="Logos/Logo_APA.jpg"  style="width:150px;height:69.8px;"></img></a>';
+        return div;
+    };
+}
+logo.addTo(map);
+logoBoleano = true
+
+// These are declared outisde the functions so that the functions can check if they already exist
+var polygonLayer;
+var pointGroupLayer;
+
+// The form of data must be a JSON representation of a table as returned by Tabletop.js
+// addPolygons first checks if the map layer has already been assigned, and if so, deletes it and makes a fresh one
+// The assumption is that the locally stored JSONs will load before Tabletop.js can pull the external data from Google Sheets
+
+
+function addPolygons(data) {
+
+
+    console.log(MA500k)
+    MA500kPolygon = MA500k['responseJSON']
+    var polygonStyleMA500k = { color: "#008498", fillColor: "#99d8c9", weight: 1.5, fillOpacity: 0.1 };
+    MA500klayer = L.geoJSON(MA500kPolygon, { style: polygonStyleMA500k }).addTo(map);
+    layerControl.addOverlay(MA500klayer, 'MA 500k')
+
+
+    rhPolygon = rh.response
+    console.log(rhPolygon)
+    var polygonStyle = { color: "#000000", fillColor: "#99d8c9", weight: 1.5, fillOpacity: 0 };
+    var RHlayer = L.geoJSON(rhPolygon, { style: polygonStyle }).addTo(map);
+    layerControl.addOverlay(RHlayer, 'RH')
+
+
+
+
+
+
+
+}
+
+function meteo(jsonObj, IDIPMA) {
+    var dataMeteo = jsonObj['data'];
+    for (var i = 0; i < dataMeteo.length; i++) {
+        var station = 1151200;
+        if (dataMeteo[i].globalIdLocal == IDIPMA) {
+            tempMax = dataMeteo[i].tMax;
+            tempMin = dataMeteo[i].tMin;
+            pPrec = dataMeteo[i].precipitaProb;
+            var metereologia = new Array(tempMin, tempMax, pPrec);
+            return metereologia;
+        }
+    }
+
+
+}
+
+function getMonthString(month) {
+    var months = ["", "Janeiro", "Fervereiro", "Merço", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    if (month === 1) {
+        return months[1];
+    }
+    if (month === 2) {
+        return months[2];
+    }
+    if (month === 3) {
+        return months[3];
+    }
+    if (month === 4) {
+        return months[4];
+    }
+    if (month === 5) {
+        return months[5];
+    }
+    if (month === 6) {
+        return months[6];
+    }
+    if (month === 7) {
+        return months[7];
+    }
+    if (month === 8) {
+        return months[8];
+    }
+    if (month === 9) {
+        return months[9];
+    }
+    if (month === 10) {
+        return months[10];
+    }
+    if (month === 11) {
+        return months[11];
+    }
+    if (month === 12) {
+        return months[12];
+    }
+}
+
+
+function zerominutes(number) {
+    if (number === 0) {
+        return "00"
+    }
+    if (number === 1) {
+        return "01"
+    }
+    if (number === 2) {
+        return "02"
+    }
+    if (number === 3) {
+        return "03"
+    }
+    if (number === 4) {
+        return "04"
+    }
+    if (number === 5) {
+        return "05"
+    }
+    if (number === 6) {
+        return "06"
+    }
+    if (number === 7) {
+        return "07"
+    }
+    if (number === 8) {
+        return "08"
+    }
+    if (number === 9) {
+        return "09"
+    } else {
+        return number
+    }
+}
+
+
+function getMobileOperatingSystem() {
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i)) {
+        return 'iOS';
+    } else if (userAgent.match(/Android/i)) {
+        return 'Android';
+    } else {
+        return 'unknown';
+    }
+}
+
+
+
+function IsJsonString(str) {
+    try {
+        JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
+// addPoints is a bit simpler, as no GeoJSON is needed for the points
+// It does the same check to overwrite the existing points layer once the Google Sheets data comes along
+function getAPIData(url) {
+    //var url = 'https://infopraiaapi.apambiente.pt/qualidade.json'
+    var requestURL = url;
+    var request = new XMLHttpRequest();
+    request.open('GET', requestURL);
+    request.responseType = 'json';
+    request.send()
+    console.log(request)
+    return (request)
+}
+
+
+
+
+
+
+function mapSelector(latitude, longitude, id) {
+    if (id === 1) {
+        loc = "http://maps.apple.com/?daddr=";
+    }
+    if (id === 2) {
+        loc = "https://www.google.com/maps/dir/?api=1&destination=";
+    }
+    if (id === 3) {
+        loc = "https://waze.com/ul?ll=";
+    }
+    var url = loc.concat(latitude, ',', longitude);
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i)) {
+        window.open(url, '_blank');
+    } else if (userAgent.match(/Android/i)) {
+        window.open(url, '_blank');
+    } else {
+        window.open(url, '_blank');
+    }
+}
+
+function directions() {
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (userAgent.match(/iPad/i) || userAgent.match(/iPhone/i) || userAgent.match(/iPod/i)) {
+        // dirApple = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsApple\" style=\"font-size:20px\"> <b> Direções Apple Maps </b></a> <br> <br>" + "";
+        // dirGoogle = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsGoogle\" style=\"font-size:20px\"> <b> Direções Google Maps </b></a> <br> <br>" + "";
+        // dirWaze = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsWaze\" style=\"font-size:20px\"> <b> Direções Waze </b></a> <br> <br>";
+        dir1 = `<div class="popup" onclick="popupW()"><i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp<a style=\"font-size:20px\"> <b> Direções </b></a>
+            <span class="popuptext" id="myPopup">
+            <p>&nbsp&nbsp<span style="color:#333333; font-size:22px" class="iconify" data-icon="ant-design:apple-filled" data-inline="false"></span> &nbsp <a href='#' id=\"directionsApple\" style=\"font-size:20px\"> <b>Apple Maps </b></a></p>
+            <p>&nbsp&nbsp<span style="color:#333333; font-size:22px" class="iconify" data-icon="ant-design:google-outlined" data-inline="false"></span> &nbsp <a href='#' id=\"directionsGoogle\" style=\"font-size:20px\"> <b>Google Maps </b></a></p>
+            <p>&nbsp&nbsp<span style="color:#333333; font-size:22px" class="iconify" data-icon="simple-icons:waze" data-inline="false"></span> &nbsp <a href='#' id=\"directionsWaze\" style=\"font-size:20px\"> <b>Waze </b></a></p></span> </div>`
+        //dir1 = [dirApple + dirGoogle + dirWaze]
+    } else if (userAgent.match(/Android/i)) {
+        //dir1 = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directions\" style=\"font-size:20px\"> <b> Direções </b><a> <br> <br>";
+        //dirGoogle = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsGoogle\" style=\"font-size:20px\"> <b> Direções Google Maps </b></a> <br> <br>" + "";
+        //dirWaze = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsWaze\" style=\"font-size:20px\"> <b> Direções Waze </b></a> <br> <br>";
+        //dir1 = [dirGoogle + dirWaze]
+        dir1 = `<div class="popup" onclick="popupW()"><i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp<a style=\"font-size:20px\"> <b> Direções </b></a>
+            <span class="popuptext" id="myPopup">           
+            <p>&nbsp<span style="color:#333333; font-size:22px" class="iconify" data-icon="ant-design:google-outlined" data-inline="false"></span> &nbsp <a href='#' id=\"directionsGoogle\" style=\"font-size:20px\"> <b>Google Maps </b></a></p>
+            <p>&nbsp<span style="color:#333333; font-size:22px" class="iconify" data-icon="simple-icons:waze" data-inline="false"></span> &nbsp <a href='#' id=\"directionsWaze\" style=\"font-size:20px\"> <b>Waze </b></a></p></span> </div>`
+    } else {
+        dirGoogle = "<i  style=\"font-size:20px\" class=\"fa fa-map\"></i> &nbsp <a href='#' id=\"directionsGoogle\" style=\"font-size:20px\"> <b> Direções </b><a> <br> <br>";
+        dir1 = dirGoogle
+    }
+    return dir1
+}
+
+function popupW() {
+    var popup = document.getElementById("myPopup");
+    popup.classList.toggle("show");
+}
+
+function uvindexf(globalUVIdex, local) {
+    //Para atribuir corretamente o codigo de Distrito das Ilhas dos Açores ao indice de UV
+    if (local === '45' || local === '46') { //Relação das Ilhas Pico, São Jorge com a Horta
+        local = '47';
+    }
+    if (local === '48') {// Relação das Flores com Corvo
+        local = '49';
+    }
+
+    if (local === '44') {// Relação Santa Cruz da Graciosa com Angra do Heroismo
+        local = '43';
+    }
+
+    if (local === '41') { //Relação da Illha de Santa Maria com Ponta Delgada
+        local = '42';
+    }
+    tuvIndex1 = "<a style=\"font-size:18px\">Índice UV &nbsp<b>";
+    tuvIndex2 = "</b></a><br>";
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+    var yyyy = today.getFullYear();
+    today = yyyy + '-' + mm + '-' + dd;
+    for (var i = 0; i < globalUVIdex.length; i++) {
+        //(globalUVIdex[i]['CodigoDistrito'])
+        if (today === globalUVIdex[i]['data'] && parseInt(local) === parseInt(globalUVIdex[i]['CodigoDistrito'])) {
+            uvi = Math.round(globalUVIdex[i]['iUv'])
+            if (uvi > 11) {
+                uvi = '11+'
+            }
+            return tuvIndex1.concat(uvi, tuvIndex2)
+        }
+    }
+    return ''
+}
+
+/*
+map.on('click', function(e) {
+    var popLocation= e.latlng;
+    var popup = L.popup()
+        .setLatLng(popLocation)
+        .setContent(('<p> X: ').concat( Math.ceil(e.latlng.lng, 4) ,'<br>', 'Y: ', e.latlng.lat.toFixed(1)  ,'</p>'))
+        .openOn(map);
+});
+*/
+
+function onEachFeature(feature, layer) {
+    if (feature.properties) {
+        layer.bindPopup("<b>NIF: </b>" + feature.properties.NIF +
+            "<br> <b>ARH:</b> " + feature.properties.ARH +
+            "<br> <b>Entidade Gestora: </b>" + feature.properties.Entidade_G +
+            "<br> <b>Designação:</b> " + feature.properties.Designaç +
+            "<br> <b>Utilização: </b>" + feature.properties.Utilizaç +
+            "<br> <b>TURH Siliamb: </b>" + feature.properties.TURH_SILiA +
+            "<br> <b>ARH:</b> " + feature.properties.ARH
+        );
+
+    }
+}
+
+function joinCodigoEstacao(jsonSNIRH, jsonAmonstragem) {
+    // console.log(jsonSNIRH[1])
+    for (var iperf = 0; iperf < jsonAmonstragem.length; iperf++) {
+        var codigoSNIRHAmostragem = jsonAmonstragem[iperf]['N. INVENTARIO']
+        // console.log('oi')
+        for (var ijsonSNIRH = 0; ijsonSNIRH < jsonSNIRH.length; ijsonSNIRH++) {
+            var codigoSNIRHdb = jsonSNIRH[ijsonSNIRH]['attributes']['referencia'];
+            if (codigoSNIRHAmostragem === codigoSNIRHdb) {
+                console.log(codigoSNIRHAmostragem)
+
+
+            }
+        }
+        // console.log(codigoAmostragem)
+    }
+}
+
+
+$(document).ready(function () {
+    $(window).keydown(function (event) {
+        if (event.keyCode == 13) {
+
+            event.preventDefault();
+            return false;
+        }
+    });
+});
+
+
+$(document).ready(function () {
+    $(window).keydown(function (event) {
+        if (event.which == 27) {
+            document.getElementById('txt-search').value = ''
+            $('#filter-records').html('');
+
+
+            return false;
+        }
+    });
+});
+var insertedCircle = false;
+function zoomToPlaceSearch(sX, sY) {
+
+    console.log(sX)
+
+    var circle;
+    map.flyTo(new L.LatLng(sX, sY), 17, { animate: true, duration: 5 });
+    if (insertedCircle === true) {
+        circle.remove()
+    }
+    $('#filter-records').html('')
+
+    map.on('zoomend', function () {
+        circle = L.circle([sX, sY], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0,
+            radius: 100,
+        }).addTo(map);
+
+        //  var newRadius = Math.pow((20 - map.getZoom()), 4);
+        // circle.setRadius(newRadius);
+
+    });
+
+
+    mapClick = true;
+    propagationLeftMenu = true;
+    map.dragging.enable();
+    map.touchZoom.enable();
+    map.doubleClickZoom.enable();
+    map.scrollWheelZoom.enable();
+    map.boxZoom.enable();
+    map.keyboard.enable();
+    if (map.tap) map.tap.enable();
+    document.getElementById('map').style.cursor = 'grab';
+    map._handlers.forEach(function (handler) {
+        handler.enable();
+    });
+}
+
+
+
+function zoomToPolygon(geom, idF) {
+    var ReverseCoordinates = new Array(2)
+    console.log(geom)
+
+    if (geom.length === 1) {
+
+        geom = geom[0]
+    }
+    console.log(geom.length)
+
+
+    console.log(geom.length)
+
+    for (i = 0; i < geom.length; i++) {
+        if (geom[i] === undefined) {
+            break
+        }
+        xgeom = geom[i][0];
+        ygeom = geom[i][1];
+        ReverseCoordinates.push([ygeom, xgeom])
+    }
+    console.log(ReverseCoordinates)
+    map.fitBounds(ReverseCoordinates)
+    $('#filter-records').html('')
+
+    mapFilterColor(MA500kPolygon, idF)
+
+}
+
+
+
+
+function increaseIndexJson(newIndex, oldIndex) {
+
+
+
+    countOld = oldIndex['data'].length;
+    console.log(newIndex['data'].length)
+
+    for (i = 0; i < newIndex['data'].length; i++) {
+
+
+        newIndex['data'][i]['index'] = countOld
+
+        countOld = countOld + 1;
+
+
+    }
+
+
+    return newIndex
+
+}
+
+
+
+var dateSelected = 0;
+var dateSelectedFinal = 0;
+var estadoInicial = 0;
+var MA500kFilter = 1;
+var primeiroDia = 0;
+var ctEstacoes;
+var insertedFilter = 2;
+var searchControl = true;
+
+var dataAutocontrolo;
+var dataAutocontroloPropriedades;
+var dataAutocontroloLimits;
+
+
+//searchAutocontrolo 
+
+
+//https://console.firebase.google.com/u/0/project/aquadap-3add6/database/aquadap-3add6-default-rtdb/data/~2F?hl=pt
+
+https://DATABASE_NAME.REGION.firebasedatabase.app
+
+
+
+
+
+function getAutocontrolo(codigo_titulo_rh, e, tipologia, nomeManual, x, y) {
+
+    //alert(nomeManual)
+    console.log(e)
+
+    //console.log(e)
+    if (tipologia == 'Automatica') {
+        // alert(tipologia)
+        dataBarraLateral = autocontroloHtml(nomeManual, x, y);
+        L.DomEvent.stopPropagation(e);
+
+
+
+
+
+
+
+
+
+
+
+
+        //alert("oi")
+    } else if (tipologia == 'Manual') {
+        // alert('manual')
+        dataBarraLateral = 0
+        // alert(nomeManual)
+        dataBarraLateral = autocontroloHtmlManual(dataEstacaoAutometica, codigo_titulo_rh, e, nomeManual);
+        // console.log(dataBarraLateral)
+        // alert('manual')
+
+
+        console.log("hello")
+        L.DomEvent.stopPropagation(e);
+        document.getElementById("sidebar-title").innerHTML = dataBarraLateral[0]
+        console.log(dataBarraLateral[0])
+        document.getElementById("sidebar-content").innerHTML = dataBarraLateral[1]
+        console.log(dataBarraLateral[0])
+        chart(dataBarraLateral[2], dataBarraLateral[3])
+
+        console.log(dataBarraLateral[0])
+        sidebar.open(panelID);
+
+    }
+
+
+
+
+
+
+
+
+}
+
+//getAutocontroloPropriedades
+
+let ma500k = L.layerGroup().addTo(map)
+var getJSON = async function (url, successHandler, errorHandler) {
+    var xhr = typeof XMLHttpRequest != 'undefined'
+        ? new XMLHttpRequest()
+        : new ActiveXObject('Microsoft.XMLHTTP');
+    xhr.open('get', url, true);
+    xhr.onreadystatechange = function () {
+        var status;
+        var data;
+        if (xhr.readyState == 4) {
+            status = xhr.status;
+            if (status == 200) {
+                data = JSON.parse(xhr.responseText);
+                successHandler && successHandler(data);
+            } else {
+                errorHandler && errorHandler(status);
+            }
+        }
+    };
+    xhr.send();
+};
+
+var kmz = L.kmzLayer()
+
+function remove_duplicates_safe(arr) {
+    var seen = {};
+    var ret_arr = [];
+    for (var i = 0; i < arr.length; i++) {
+        if (!(arr[i] in seen)) {
+            ret_arr.push(arr[i]);
+            seen[arr[i]] = true;
+        }
+    }
+    return ret_arr;
+
+}
+
+var MA_Bacias_PGRH3;
+var SubBacias;
+/*
+document.addEventListener("DOMContentLoaded", function () {
+    //https://www.npmjs.com/package/leaflet-kmz  https://github.com/Raruto/leaflet-kmz
+    // Instantiate KMZ layer (async)
+
+    kmz.on('load', function (e) {
+        //controls.addOverlay(e.layer, e.name);
+
+        if (e.name == 'MA_Bacias_PGRH3.kmz') {
+            e.layer.setStyle({
+                weight: 1,
+                color: '#063ebd',
+                dashArray: '',
+                fillOpacity: 0.01,
+                // fillColor: 'red'
+            });
+            //alert('oi')
+            MA_Bacias_PGRH3=e.layer;
+            layerControl.addOverlay(e.layer, 'Bacias PGRH3')
+            // e.layer.addTo(map);
+        }
+
+        if (e.name == 'MA_Subterraneas.kmz') {
+            e.layer.setStyle({
+                weight: 1,
+                color: '#000000',
+                dashArray: '',
+                fillOpacity: 0.01,
+                //  fillColor: 'red'
+            });
+            SubBacias=e.layer;
+            layerControl.addOverlay(e.layer, 'MA Subt')
+            // e.layer.addTo(map);
+        }
+    });
+    kmz.load('kml/MA_Bacias_PGRH3.kmz');
+    kmz.load('kml/MA_Subterraneas.kmz');
+});
+
+*/
+loaderPercentage(4)
+var xOld;
+var ex;
+//var dataRarrePontos = rarrePontos['responseJSON'];
+// markers=dataRarrePontos
+//console.log(markers)
+var firstLoader=true;
+var firstLoaderFilters=true;
+
+
+
+function filtroLegenda(tipologia){
+   
+ //   for(var texture in PIXI.TextureCache){var tmp = PIXI.Texture.removeTextureFromCache(texture);tmp.destroy(true);}for(var texture in PIXI.BaseTextureCache){PIXI.BaseTextureCache[texture].destroy(true);}
+ //   PIXI.texture.destroy(true)
+    //console.log(MA_Bacias_PGRH3)
+   // pixiContainer.destroy()
+ // pixiContainer.destroy(true);
+
+   var tipologiaIndice;
+   var tipologiaIndiceDouble;
+
+
+
+
+    switch (tipologia) {
+
+
+        case  'Domésticas':
+            tipologiaIndice=1;
+            break;
+        case 'Urbanas':
+            tipologiaIndice=2;
+            break;
+        case 'Industriais':
+            tipologiaIndice=3;
+            break;
+        case 'Captações':
+            tipologiaIndice=100;
+            break;
+        case 'Agropecuárias':
+            tipologiaIndice=4;
+            break;
+
+        case 'Outras':
+            tipologiaIndice=5;
+            break;
+        
+        case 'VerTudo':
+            console.log(markersGlobal)
+            loadMarkers(markersGlobal)
+        
+            tipologiaIndice=0;
+        break
+
+        default:
+            tipologiaIndice=0;
+    }
+
+
+    if (tipologia!=='VerTudo'){
+    if (tipologiaIndice!==0 ||tipologiaIndice===undefined){
+        result = Object.values(markersGlobal).filter(item => item.fk_tipo_origem_aguas_residuais === tipologiaIndice)
+        console.log(result)
+        console.log('Estações por tipologia')
+        console.log(result.length)
+        loadMarkers(result)
+    }
+    else{
+        alert('Não existem estações para esta tipologia')
+    }
+}
+
+}
+
+var markersGlobal;
+var utils;
+var dataCapatacoes
+var dataCapatacoesGeoJson
+var autocontrolo = $.getJSON(autocontrolo, function () {
+})
+loaderPercentage("A procurar Estações")
+
+/*
+$.getJSON('https://10.241.98.1:3500/getCoordenadasCaptacoesLUA', function () {
+
+  //  https://10.241.98.1:3500/getAutocontroloPontos
+    loaderPercentage(6)
+})
+    .done(function (markers) {
+        loaderPercentage(7)
+       // markersGlobal=markers;
+        quadTree =[]
+        quadTrees = {};
+        loadMarkers(markers)           
+
+    })
+        .fail(function () {
+            loaderPercentage('Erro ao carregar os Pontos')
+            console.log("error");
+        })*/
+
+var loader = new PIXI.loaders.Loader();
+var quadTree;
+var quadTrees;
+var pixiContainer = new PIXI.Container();
+var renderer;
+var pixiLayer;
+var zoom;
+
+//var textures;
+var dataEstacaoAutometica;
+/*
+function firebaseFinished(markers){
+
+    dataEstacaoAutometica=markers
+    //console.log(markers1)
+}*/
+
+function getZoomF(utils){
+   // console.log()
+  return map.getZoom()// utils.getMap().getZoom()
+
+
+}
+
+//var dataFirebase;
+
+async function loadMarkers(markers){
+
+    console.log(aquav1);
+    //alert();
+    //console.log(markers);
+    //console.log(db)
+   
+   // dataFirebase=markers;
+    //console.log(dataFirebase)
+    
+    loaderPercentage(3)
+    if (firstLoader===true){
+    loader
+        .add('focusMarker', 'img/marker_5.png')
+        .add('markericon', 'img/marker_5.png');   
+    }    
+
+    loaderPercentage("Carregamento de Pontos no Mapa")
+    loader.load(function (loader, resources) {
+    loaderPercentage("5%")
+  
+    var textures = [resources.markericon.texture];
+    var focusTextures = [resources.focusMarker.texture];
+            //     console.log(markers)
+            if (firstLoader===true){
+            L.tileLayer('', {
+                //                  subdomains: 'abcd',
+                //                  attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, under <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>. Data by <a href="http://openstreetmap.org">OpenStreetMap</a>, under <a href="http://www.openstreetmap.org/copyright">ODbL</a>.',
+                               minZoom: 5,
+                              maxZoom: 17
+            }).addTo(map);
+            var legend = document.querySelector('div.legend.geometry');
+            var legendContent = legend.querySelector('.content');
+        }
+            //  map.attributionControl.setPosition('bottomleft');
+            // map.zoomControl.setPosition('bottomright');
+
+            pixiLayer = function (){
+                var firstDraw = true;
+                var prevZoom;
+                var markerSprites = [];
+                var colorScale = d3.scaleLinear()
+                    .domain([0, 50, 100])
+                    .range(["#c6233c", "#ffd300", "#008000"]);
+
+                var frame = null;
+                var focus = null;
+        
+            //    pixiContainer = new PIXI.Container();
+                var doubleBuffering = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                return L.pixiOverlay(function (utils) {
+                     zoom = utils.getMap().getZoom();
+
+              //      console.log('utils')
+                //    console.log(utils)
+                  //  console.log( getZoomF(utils))
+                    if (frame) {
+                        cancelAnimationFrame(frame);
+                        frame = null;
+                    }
+                   var container = utils.getContainer();
+                       renderer = utils.getRenderer();
+                    var project = utils.latLngToLayerPoint;
+                    var scale = utils.getScale();
+                    var invScale = 1 / scale;
+
+                    if (firstDraw) {
+                        loaderPercentage(10);
+                        prevZoom = zoom;
+                        console.log(markers)
+                        //markers.every(function (marker) {//carrega apenas o primeiro
+                           markers.forEach(function (marker) {
+                            console.log(marker)
+                            tempMarkersLength = markers.length
+                            elimina = false
+                            count = 0
+
+                            for (m = 0; m < tempMarkersLength; m++) {
+                                markers[m].nOrigens = 1;
+                            }                           
+                            marker.fk_tipo_origem_aguas_residuais = 100
+                            //return false;                            
+                        }),
+                      
+                            r = markers
+                          
+                        markers = r
+                        console.log(markers)
+                        if (firstLoaderFilters===true){
+                            firstLoaderFilters=false
+                            //alert('oi')
+                            markersGlobal=r                                            
+                        }
+                        //console.log(markers.length)
+                        ctM=0;
+                        //markers.every(function (marker) {//carrega apenas o primeiro
+                            markers.forEach(function (marker) {
+                            coordx = marker.y;
+                            //console.log(coordx)
+                            coordy = marker.x;
+                            if (coordx == null) {
+                                coordx = 1;
+                            }
+                            if (coordy == null) {
+                                coordy = 1;
+                            }
+
+                            var coords = project([coordx, coordy]);
+                            var index = Math.floor(Math.random() * textures.length);
+                            var markerSprite = new PIXI.Sprite(textures[index]);
+                            markerSprite.textureIndex = index;
+                            markerSprite.x0 = coords.x;
+                            markerSprite.y0 = coords.y;
+                            markerSprite.anchor.set(0.5, 0.5);
+                            //var tint = d3.color(colorScale(marker.avancement || Math.random() * 100)).rgb();
+
+                            // var tint={r: 0, g: 0, b: 128, opacity: 1}
+
+                            //4	Agropecuárias
+                            //16		Águas Ruças
+                            //8		Comércio/Serviços
+                            //1		Domésticas
+                            //6		Habitação
+                            //3		Industriais
+                            //7		Instalações sociais
+
+                            //15		Pluviais contaminadas
+
+                            //12		Processo de produção
+                            //18		Processo de produção
+
+
+                            //13		Sanitários e refeitório
+                            //20		Sanitários e refeitório
+
+                            //14		Torre de refrigeração
+                            //2		Urbanas
+                            //17		Outra
+                            //5		Outras
+
+                            switch (marker.fk_tipo_origem_aguas_residuais) {
+                                case 100:
+                                    //Verde - Mistas
+                                    var tint = d3.rgb(25, 25, 112);
+                                    console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 1:
+                                    //Verde - Domesticas
+                                    var tint = d3.rgb(124, 252, 0);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+                                case 2:
+                                    //Azul - Urbanas
+                                    var tint = d3.rgb(74, 167, 211);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+                                case 3:
+                                    //Vermelho - Industriais
+                                    var tint = d3.rgb(255, 0, 0)
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+                                case 4:
+                                    //Laranja - Agropecuárias
+                                    var tint = d3.rgb(255, 140, 1)
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 5:
+                                    // Cizento - Outras
+                                    var tint = d3.rgb(96, 96, 96)
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 17:
+                                    // Cizento - Outra
+                                    var tint = d3.rgb(96, 96, 96)
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 6:
+                                    //Violeta - Habitação
+                                    var tint = d3.rgb(153, 50, 204);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 8:
+                                    //Violeta - Comércio/Serviços
+                                    var tint = d3.rgb(51, 102, 0);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+                                case 7:
+                                    //Rosa - Instalações sociais
+                                    var tint = d3.rgb(255, 0, 255);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+
+
+                                case 13:
+                                    //Azul Escuro - Sanitários e refeitório
+                                    var tint = d3.rgb(0, 0, 204);
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+                                case 20:
+                                    //Azul Escuro - Sanitários e refeitório
+                                    var tint = d3.rgb(0, 0, 204);
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+
+
+                                case 14:
+                                    //Preto - Torre de refrigeração
+                                    var tint = d3.rgb(0, 0, 0);
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+                                case 15:
+                                    //Castaho Escuro- Pluviais contaminadas
+                                    var tint = d3.rgb(102, 51, 0);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 12:
+                                    //Verde Escuro-Processo de produção
+                                    var tint = d3.rgb(153, 153, 0);
+                                    //console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 18:
+                                    //Verde Escuro-Processo de produção
+                                    var tint = d3.rgb(153, 153, 0);
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+                                case 16:
+                                    //Castanho - Águas Ruças
+                                    var tint = d3.rgb(165, 82, 45)
+                                    // console.log(marker.fk_tipo_origem_aguas_residuais)
+                                    break;
+
+
+
+                                default:
+                                    //Preto - Null
+                                    var tint = d3.rgb(192, 192, 192)
+                            }
+
+
+                            // var tint = d3.rgb(200,100,0)
+                            //   console.log(tint)
+                            markerSprite.tint = 256 * (tint.r * 256 + tint.g) + tint.b;
+                            //markerSprite.tint = 200//( 256 * (tint.r * 256 + tint.g) + tint.b)
+                            //console.log( 256 * (tint.r * 256 + tint.g) + tint.b)
+                            container.addChild(markerSprite);
+                            markerSprites.push(markerSprite);
+                         
+                            markerSprite.legend = marker.ID;
+                            //console.log(typeof markerSprite);
+                            
+                            markerSprite.Tipologia=marker.Tipologia;
+                            markerSprite.Nome=marker.nome;
+                            markerSprite.X=marker.x;
+                            markerSprite.Y=marker.y;
+
+                            console.log(markerSprite)
+                           // alert()
+                               return false;                            
+                            
+                        });
+                        quadTrees = {};
+
+                        for (var z = map.getMinZoom(); z <= map.getMaxZoom(); z++) {
+                            var rInit = ((z <= 6) ? 16 : 24) / utils.getScale(z);
+                            quadTrees[z] = window.solveCollision(markerSprites, { r0: rInit, zoom: z });
+                            console.log(rInit)
+                        }
+                        function findMarker(ll) {
+                            var layerPoint = project(ll);
+                            quadTree = quadTrees[getZoomF(utils)];
+                            var marker;
+
+                            try {
+                                var rMax = quadTree.rMax
+                            }
+                            catch (err) {
+                                var rMax = 0.046875
+                            }
+
+
+                            //console.log(rMax)
+
+                            var found = false;
+                            quadTree.visit(function (quad, x1, y1, x2, y2) {
+                                if (!quad.length) {
+                                    var dx = quad.data.x - layerPoint.x;
+                                    var dy = quad.data.y - layerPoint.y;
+                                    var r = quad.data.scale.x * 16;
+                                    if (dx * dx + dy * dy <= r * r) {
+                                        marker = quad.data;
+
+                                        found = true;
+                                    }
+                                }
+                                return found || x1 > layerPoint.x + rMax || x2 + rMax < layerPoint.x || y1 > layerPoint.y + rMax || y2 + rMax < layerPoint.y;
+                            });
+                            return marker;
+                        }
+                        map.on('click', async function (e) {
+                            var redrawL = false;
+                            if (focus) {
+                                focus.texture = textures[focus.textureIndex];
+                                focus = null;
+                                //    L.DomUtil.addClass(legend, 'hide');
+                                //  legendContent.innerHTML = '';
+                                redrawL = true;
+                            }
+                            var marker = findMarker(e.latlng);
+
+                            if (marker) {
+                                marker.texture = focusTextures[marker.textureIndex];
+                                focus = marker;
+                                legendContent.innerHTML = marker.legend;
+                                //  L.DomUtil.removeClass(legend, 'hide');
+                                redrawL = true;
+                            }
+                            // if (redrawL) utils.getRenderer().render(container);
+                            //  console.log(marker)
+                            // alert(marker.Tipologia)
+                            //console.log(marker);
+                            //   alert(marker);
+
+                            dataAutocontolo = getAutocontrolo(legend.textContent, e, marker.Tipologia, marker.Nome, marker.X, marker.Y)
+
+                            //+ 'param=value';
+
+
+                            //  alert(legend.textContent)
+                        });
+                        var self = this;
+                        map.on('mousemove', L.Util.throttle(function (e) {
+                            var marker = findMarker(e.latlng);
+                            if (marker) {
+                                L.DomUtil.addClass(self._container, 'leaflet-interactive');
+                            } else {
+                                L.DomUtil.removeClass(self._container, 'leaflet-interactive');
+                            }
+                        }, 32));
+                    }
+                    if (firstDraw || prevZoom !== zoom) {
+                        markerSprites.forEach(function (markerSprite) {
+                            var position = markerSprite.cache[zoom];
+                            if (firstDraw) {
+                                markerSprite.x = position.x;
+                                markerSprite.y = position.y;
+                                markerSprite.scale.set((position.r * scale < 16) ? position.r / 15 : invScale);
+                            } else {
+                                markerSprite.currentX = markerSprite.x;
+                                markerSprite.currentY = markerSprite.y;
+
+                                try {
+                                    markerSprite.targetX = position.x;
+                                }
+                                catch (err) {
+                                    markerSprite.targetX = 62417.17988010667
+                                }
+                                markerSprite.targetY = position.y;
+                                markerSprite.currentScale = markerSprite.scale.x;
+                                markerSprite.targetScale = (position.r * scale < 16) ? position.r / 15 : invScale;
+                            }
+                        });
+                    }
+
+                    var start = null;
+                    var delta = 150;
+                    function animate(timestamp) {
+                        var progress;
+                        if (start === null) start = timestamp;
+                        progress = timestamp - start;
+                        var lambda = progress / delta;
+                        if (lambda > 1) lambda = 1;
+                        lambda = lambda * (0.4 + lambda * (2.2 + lambda * -1.6));
+                        markerSprites.forEach(function (markerSprite) {
+                            markerSprite.x = markerSprite.currentX + lambda * (markerSprite.targetX - markerSprite.currentX);
+                            markerSprite.y = markerSprite.currentY + lambda * (markerSprite.targetY - markerSprite.currentY);
+                            markerSprite.scale.set(markerSprite.currentScale + lambda * (markerSprite.targetScale - markerSprite.currentScale));
+                        });
+                        renderer.render(container);
+                        if (progress < delta) {
+                            frame = requestAnimationFrame(animate);
+                        }
+                    }
+                    if (!firstDraw && prevZoom !== zoom) {
+                        frame = requestAnimationFrame(animate);
+                    }
+                    firstDraw = false;
+                    prevZoom = zoom;
+                    renderer.render(container);
+                }, pixiContainer, {
+                    doubleBuffering: true,
+                    destroyInteractionManager: false
+                });
+            }();
+            loadingPercentage.remove();
+            loading.hide();      
+
+            if (firstLoader===true){               
+                ex=pixiLayer.addTo(map);
+                layerControl.addOverlay(ex, 'Autocontrolo')
+                firstLoader=false;        
+                }else{                  
+                  layerControl.removeLayer(ex);
+                  ex.removeFrom(map)                  
+                  console.log(layerControl)                                      
+                   pixiContainer.removeChildren(0, 10000)                  
+                   console.log(pixiContainer)  
+                   ex= pixiLayer.addTo(map)                
+                   //pixiLayer.redraw()                  
+                  layerControl.addOverlay(pixiLayer, 'Autocontrolo')                            
+                };                  
+            console.log(quadTrees)
+ })
+};
+
+
+
+function searchLoadingNew() {
+    console.log('searching')
+    var output = '<div  style="width: 475px  class="row"> <table style="width:80% border: 1px solid black"> ';
+    output += '<a href="#"><div onclick="document.getElementById(\'txt-search\').value =' + "'" + 'A procurar registos' + "'" + '"' + '>' +
+        '<div id="zomToPlaceSearch" ' +
+        '<div  style=" background-color:#38aadd ;  width:450px; "  class="col-lg-12 well ">';
+    output += '<a style="font-weight: bold; color:White" href="#">' + 'A procurar registos' + '&nbsp&nbsp</a>';
+    output += '</div></div></div>';
+    output += '</table> </div> </a >';
+    //boxSearch.style.height = '100px'; // Changes color, adds style property.
+    var div3 = L.DomUtil.create('div', 'boxSearch3')
+    div3.innerHTML = (output)
+    $('#filter-records').html(div3);
+    var md = document.getElementsByClassName("boxSearch3")[0];
+    md.style.height = '115px';
+    console.log(md)
+    console.log('searching')
+}
+
+
+function searchLoading() {
+    console.log('searching')
+    var output = '<div  style="width: 475px  class="row"> <table style="width:80% border: 1px solid black"> ';
+    output += '<a href="#"><div onclick="document.getElementById(\'txt-search\').value =' + "'" + 'A procurar registos' + "'" + '"' + '>' +
+        '<div id="zomToPlaceSearch" ' +
+        '<div  style=" background-color:#38aadd ;  width:450px; "  class="col-lg-12 well ">';
+    output += '<a style="font-weight: bold; color:White" href="#">' + 'A procurar registos' + '&nbsp&nbsp</a>';
+    output += '</div></div></div>';
+    output += '</table> </div> </a >';
+    //boxSearch.style.height = '100px'; // Changes color, adds style property.
+    var div2 = L.DomUtil.create('div', 'boxSearch')
+    div2.innerHTML = (output)
+    $('#filter-records').html(div2);
+    var md = document.getElementsByClassName("boxSearch")[0];
+    md.style.height = '115px';
+    console.log(md)
+    console.log('searching2')
+
+
+}
+
+function showSearchDB(jsonDB) {
+    //alert('oi')
+    console.log(jsonDB)
+    var output = '<div  style="width: 475px  class="row"> <table style="width:80% border: 1px solid black"> ';
+    var count = 1;
+    var countLines = 1;
+    var countElementes = 0;
+
+    if (jsonDB.length > 0) {
+        $.each(jsonDB, function (val, index) {
+           // console.log(val)
+            //console.log(index)
+            var nome = index['designacao'];
+            var x = index['x'];
+            var y = index['y'];
+            var nif = index['nif'];
+            var titulo = index['codigo_titulo_rh'];
+            var designacao = index['designacao'];
+
+            output += '<a href="#"><div onclick="document.getElementById(\'txt-search\').value =' + "'" + titulo + "'" + '"' + '>' +
+                '<div id="zomToPlaceSearch" onclick="zoomToPlaceSearch(' + y + ',' + x + ')">' +
+                '<div  style=" background-color:#38aadd ;  width:450px;  "  class="col-lg-12 well ">';
+            output += '<div class="col-lg-12">';
+            output += '<a style="font-weight: bold; color:White" href="#">' + designacao + '</a>&nbsp&nbsp';
+            output += '<a style="font-weight: bold; color:White" href="#">' + titulo + '</a>&nbsp&nbsp';
+            //output += '<a style="font-weight: bold; color:White" href="#">' + nome + '</a>&nbsp&nbsp';
+            output += '<a style="font-weight: bold; color:White" href="#">' + nif + '</a>&nbsp&nbsp';
+            output += '</div>';
+            output += '</div></div></div>';
+            if (count == 1) {
+                output += '</div><div class="row">'
+                count = 1
+            }
+            count++;
+            countLines++;
+            //   }
+        });
+    }
+    else {
+
+        output += '<a href="#"><div onclick="document.getElementById(\'txt-search\').value =' + "'" + 'Não existem registos' + "'" + '"' + '>' +
+            '<div id="zomToPlaceSearch" ' +
+            '<div  style=" background-color:#38aadd ;  width:450px; "  class="col-lg-12 well ">';
+        output += '<a style="font-weight: bold; color:White" href="#">' + 'Não existem registos <br> para os critérios da pesquisa' + '&nbsp&nbsp</a>';
+        output += '</div></div></div>';
+    }
+
+    output += '</table> </div> </a >';
+
+    //boxSearch.style.height = '100px'; // Changes color, adds style property.
+
+    var div2 = L.DomUtil.create('div', 'boxSearch')
+
+    div2.innerHTML = (output)
+    $('#filter-records').html(div2);
+
+    var md = document.getElementsByClassName("boxSearch")[0];
+
+    //  console.log(md)
+    if (countLines === 1) {
+
+        md.style.height = '115px';
+    }
+
+    if (countLines === 2) {
+
+        md.style.height = '115px';
+    }
+    if (countLines === 3) {
+
+        md.style.height = '190px';
+    }
+
+    if (countLines === 4) {
+
+        md.style.height = '275px';
+    }
+
+    if (countLines === 5) {
+
+        md.style.height = '325px';
+    }
+
+};
+
+
