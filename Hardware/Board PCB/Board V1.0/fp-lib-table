@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Bibliotecas")(type "KiCad")(uri "C:/Users/samuel.fernandes/Documents/AQUADAPT/Board PCB/Bibliotecas")(options "")(descr ""))
+  (lib (name "Logos")(type "KiCad")(uri "C:/Users/samuel.fernandes/Documents/AQUADAPT/Board PCB/Logos")(options "")(descr ""))
+)
